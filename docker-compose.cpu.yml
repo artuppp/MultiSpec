@@ -1,0 +1,36 @@
+services:
+  multispec:
+    build:
+      context: .
+      dockerfile: Dockerfile.cpu
+    image: multispec-cpu:latest
+    container_name: multispec
+
+    # Sin GPU — no hay sección deploy/resources
+
+    # ── Cámaras USB ──────────────────────────────────────────────
+    devices:
+      - /dev/video0:/dev/video0
+      - /dev/video1:/dev/video1
+      - /dev/video2:/dev/video2
+      - /dev/video3:/dev/video3
+      - /dev/video4:/dev/video4
+    device_cgroup_rules:
+      - "c 81:* rmw"
+
+    # ── USB (Canon gphoto2) ───────────────────────────────────────
+    group_add:
+      - video
+    volumes:
+      - /dev/bus/usb:/dev/bus/usb
+      - ./camera_config.json:/app/camera_config.json
+      - ./state.json:/app/state.json
+
+    network_mode: host
+    restart: unless-stopped
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

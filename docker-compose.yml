@@ -1,0 +1,51 @@
+services:
+  multispec:
+    build: .
+    image: multispec:latest
+    container_name: multispec
+
+    # ── GPU ──────────────────────────────────────────────────────────────────
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+    # ── Cámaras USB ──────────────────────────────────────────────────────────
+    # Expone todos los /dev/video* al container.
+    # v4l2loopback (/dev/video2 para la Canon) debe estar cargado en el HOST
+    # antes de arrancar el container con: 
+    #   sudo modprobe v4l2loopback devices=1 video_nr=2 card_label="Canon UV" exclusive_caps=1
+    devices:
+      - /dev/video0:/dev/video0
+      - /dev/video1:/dev/video1
+      - /dev/video2:/dev/video2
+      - /dev/video3:/dev/video3
+      - /dev/video4:/dev/video4
+    device_cgroup_rules:
+      - "c 81:* rmw"   # V4L2 devices
+
+    # ── USB (Canon gphoto2) ───────────────────────────────────────────────────
+    # Necesario para que gphoto2 acceda a la Canon por USB desde dentro del container
+    privileged: false
+    group_add:
+      - video
+    volumes:
+      - /dev/bus/usb:/dev/bus/usb   # acceso USB raw para gphoto2
+      - ./camera_config.json:/app/camera_config.json  # config detectada por start.sh
+      - ./state.json:/app/state.json                  # estado persistente
+
+    # ── Red ──────────────────────────────────────────────────────────────────
+    network_mode: host   # para que los móviles en la misma red accedan directamente
+
+    # ── Reinicio ─────────────────────────────────────────────────────────────
+    restart: unless-stopped
+
+    # ── Logs ─────────────────────────────────────────────────────────────────
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

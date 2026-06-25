@@ -1,0 +1,29 @@
+{
+  "filter": {
+    "uv": "none",
+    "thermal": "upscale_sr",
+    "visible": "none"
+  },
+  "flip": {
+    "uv": null,
+    "thermal": null,
+    "visible": null
+  },
+  "rotate": {
+    "uv": 0,
+    "thermal": 180,
+    "visible": 0
+  },
+  "labels": {
+    "uv": "UV",
+    "thermal": "T\u00e9rmica",
+    "visible": "Visible"
+  },
+  "visible_src": "primary",
+  "roi": {
+    "uv": null,
+    "thermal": null,
+    "visible": null
+  },
+  "overlay_text": ""
+}
