@@ -47,6 +47,7 @@ FILTERS = {
     "upscale_clahe":        "↑ Lanczos + CLAHE",
     "upscale_sharp":        "↑ Lanczos + Enfocar",
     "upscale_sr":           "↑ Super-resolución IA (EDSR)",
+    "upscale_sr_inferno":   "↑ Super-resolución IA (EDSR) + Inferno",
     "upscale_sr_clahe":     "↑ Super-res IA + CLAHE",
     # ── Pseudocolor ──
     "jet":           "Pseudocolor Jet",
@@ -227,8 +228,8 @@ for s in streams.values():
 _sr       = None
 _sr_lock  = threading.Lock()
 
-_MODEL_PATH = os.path.join(os.path.dirname(__file__), "RealESRGAN_x4plus.pth")
-_MODEL_URL  = "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth"
+_MODEL_PATH = os.path.join(os.path.dirname(__file__), "realesr-general-x4v3.pth")
+_MODEL_URL  = "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth"
 
 def _get_sr():
     global _sr
@@ -237,12 +238,12 @@ def _get_sr():
             return _sr
         try:
             import torch
-            from basicsr.archs.rrdbnet_arch import RRDBNet
+            from realesrgan.archs.srvgg_arch import SRVGGNetCompact
             from realesrgan import RealESRGANer
 
             # Descarga el modelo si no está en disco
             if not os.path.exists(_MODEL_PATH):
-                print("[SR] Descargando RealESRGAN_x4plus.pth...")
+                print("[SR] Descargando realesr-general-x4v3.pth...")
                 import urllib.request
                 urllib.request.urlretrieve(_MODEL_URL, _MODEL_PATH)
                 print("[SR] Modelo descargado")
@@ -250,10 +251,9 @@ def _get_sr():
             use_gpu  = torch.cuda.is_available() and not os.environ.get("REALESRGAN_CPU")
             use_half = use_gpu  # fp16 solo en GPU
 
-            model = RRDBNet(
-                num_in_ch=3, num_out_ch=3,
-                num_feat=64, num_block=23,
-                num_grow_ch=32, scale=4
+            model = SRVGGNetCompact(
+                num_in_ch=3, num_out_ch=3, num_conv=32,
+                num_feat=64, act_type='prelu', upscale=4
             )
             upsampler = RealESRGANer(
                 scale=4,
@@ -336,6 +336,10 @@ def apply_filter(frame, filter_name):
         return cv2.filter2D(frame, -1, kernel)
     if filter_name == "upscale_sr":
         return _upscale_sr(frame)
+    if filter_name == "upscale_sr_inferno":
+        frame = _upscale_sr(frame)
+        gray  = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        return cv2.applyColorMap(gray, cv2.COLORMAP_INFERNO)
     if filter_name == "upscale_sr_clahe":
         frame = _upscale_sr(frame)
         gray  = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
