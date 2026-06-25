@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 MultiSpec v2 — Servidor de visualización multiespectal
-Cámaras: UV (Canon via gphoto2), Térmica (TC001 USB), Visible (Android/Webcam USB)
+Cámaras: UV (Canon via gphoto2), Térmica (TC001 USB), Visible (Webcam USB)
 """
 
 import cv2
@@ -18,7 +18,8 @@ from pathlib import Path
 app = Flask(__name__)
 
 # ─── Configuración ─────────────────────────────────────────────────────────
-_DEFAULTS = {"uv": 2, "thermal": 0, "visible": 4, "visible_alt": 6}
+_DEFAULTS = {"uv": 2, "thermal": 0, "visible": 4}
+# visible_alt eliminado — solo webcam como fuente visible
 
 _CONFIG_PATH = os.path.join(os.path.dirname(__file__), "camera_config.json")
 if os.path.exists(_CONFIG_PATH):
@@ -75,7 +76,7 @@ COLORMAPS = {
 }
 
 # Campos que se persisten (excluimos paused/frozen/presentation que son estado de sesión)
-_PERSISTENT_KEYS = {"labels", "roi", "filter", "rotate", "flip", "visible_src", "overlay_text"}
+_PERSISTENT_KEYS = {"labels", "roi", "filter", "rotate", "flip", "overlay_text"}
 
 _STATE_PATH = os.path.join(os.path.dirname(__file__), "state.json")
 
@@ -87,7 +88,6 @@ _STATE_DEFAULTS = {
     "filter":      {"uv": "none","thermal": "inferno","visible": "none"},
     "rotate":      {"uv": 0,     "thermal": 0,      "visible": 0},
     "flip":        {"uv": None,  "thermal": None,   "visible": None},
-    "visible_src": "primary",
     "overlay_text": "",
     "presentation": False,
 }
@@ -213,12 +213,11 @@ class CameraStream:
             return self.frame is not None
 
 
-# Inicializa streams (visible tiene primario y alternativo)
+# Inicializa streams (visible = webcam, único)
 streams = {
-    "uv":          CameraStream(_DEFAULTS["uv"],         "UV"),
-    "thermal":     CameraStream(_DEFAULTS["thermal"],    "Térmica", is_thermal=True),
-    "visible":     CameraStream(_DEFAULTS["visible"],    "Visible"),
-    "visible_alt": CameraStream(_DEFAULTS["visible_alt"],"Visible Alt"),
+    "uv":      CameraStream(_DEFAULTS["uv"],      "UV"),
+    "thermal": CameraStream(_DEFAULTS["thermal"], "Térmica", is_thermal=True),
+    "visible": CameraStream(_DEFAULTS["visible"], "Visible"),
 }
 for s in streams.values():
     s.start()
@@ -410,15 +409,9 @@ def get_processed_frame(key):
             "filter":   state["filter"].get(key, "none"),
             "rotate":   state["rotate"].get(key, 0),
             "flip":     state["flip"].get(key),
-            "visible_src": state["visible_src"],
         }
 
-    # Canal visible: elige fuente
-    stream_key = key
-    if key == "visible":
-        stream_key = "visible_alt" if s["visible_src"] == "alt" else "visible"
-
-    stream = streams[stream_key]
+    stream = streams[key]
 
     # Congelado
     if s["frozen"]:
@@ -594,17 +587,6 @@ def api_label(key):
     streams[key].label = data["label"][:30]
     _save_state()
     return jsonify({"label": data["label"]})
-
-@app.route("/api/visible_src", methods=["POST"])
-def api_visible_src():
-    data = request.get_json()
-    src = data.get("src", "primary")
-    if src not in ("primary", "alt"):
-        return jsonify({"error": "src debe ser primary o alt"}), 400
-    with state_lock:
-        state["visible_src"] = src
-    _save_state()
-    return jsonify({"visible_src": src})
 
 @app.route("/api/overlay", methods=["POST"])
 def api_overlay():
@@ -887,28 +869,6 @@ header.hidden { opacity: 0; pointer-events: none; height: 0; padding: 0; overflo
 }
 .overlay-bar.visible { display: block; }
 
-/* ── Selector fuente visible ── */
-.src-toggle {
-  display: flex;
-  gap: 0.25rem;
-  align-items: center;
-  font-size: 0.68rem;
-  color: var(--muted);
-  font-family: 'Space Mono', monospace;
-}
-.src-btn {
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--muted);
-  padding: 1px 6px;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 0.65rem;
-  font-family: 'Space Mono', monospace;
-  transition: color 0.15s, border-color 0.15s;
-}
-.src-btn.active { color: var(--visible); border-color: var(--visible); }
-
 /* ── Footer ── */
 footer {
   padding: 0.4rem 1.5rem;
@@ -1024,10 +984,6 @@ footer.hidden { opacity: 0; pointer-events: none; height: 0; padding: 0; overflo
       <div class="panel-dot"></div>
       <span class="panel-label-text" id="label-visible" onclick="openLabelModal('visible')">Visible</span>
       <div class="panel-controls">
-        <div class="src-toggle">
-          <button class="src-btn active" id="src-primary" onclick="setVisibleSrc('primary')">Móvil</button>
-          <button class="src-btn"        id="src-alt"     onclick="setVisibleSrc('alt')">Webcam</button>
-        </div>
         <button class="panel-btn" id="btn-pause-visible"   onclick="togglePause('visible')">⏸ Pausa</button>
         <button class="panel-btn" id="btn-freeze-visible"  onclick="toggleFreeze('visible')">❄ Congelar</button>
         <button class="panel-btn" id="btn-rotl-visible"    onclick="rotate('visible',-90)" title="Rotar -90°">↺</button>
@@ -1227,11 +1183,6 @@ async function restoreState() {
       }
     });
 
-    // Visible src
-    const src = s.visible_src || "primary";
-    document.getElementById("src-primary").classList.toggle("active", src === "primary");
-    document.getElementById("src-alt").classList.toggle("active", src === "alt");
-
     // Overlay
     if (s.overlay_text) {
       document.getElementById("overlay-input").value = s.overlay_text;
@@ -1274,13 +1225,6 @@ function toggleExpand(key) {
     btn.textContent = "⤡";
     expandedPanel = key;
   }
-}
-
-// ── Fuente visible ────────────────────────────────────────────
-async function setVisibleSrc(src) {
-  await api("/api/visible_src", { src });
-  document.getElementById("src-primary").classList.toggle("active", src === "primary");
-  document.getElementById("src-alt").classList.toggle("active", src === "alt");
 }
 
 // ── Overlay texto ─────────────────────────────────────────────

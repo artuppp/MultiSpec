@@ -1,4 +1,25 @@
 {
+  "roi": {
+    "uv": null,
+    "thermal": {
+      "x": 0.3291602097393388,
+      "y": 0.3798121938372131,
+      "w": 0.48513302034428796,
+      "h": 0.48513302034428796
+    },
+    "visible": {
+      "x": 0.2782280178471941,
+      "y": 0.47385195871741626,
+      "w": 0.48946515397082657,
+      "h": 0.48946515397082657
+    }
+  },
+  "labels": {
+    "uv": "UV",
+    "thermal": "T\u00e9rmica",
+    "visible": "Visible"
+  },
+  "overlay_text": "",
   "flip": {
     "uv": null,
     "thermal": null,
@@ -9,21 +30,9 @@
     "thermal": 180,
     "visible": 0
   },
-  "labels": {
-    "uv": "UV",
-    "thermal": "T\u00e9rmica",
-    "visible": "Visible"
-  },
   "filter": {
     "uv": "none",
-    "thermal": "upscale_sr_inferno",
+    "thermal": "upscale_sr",
     "visible": "none"
-  },
-  "overlay_text": "",
-  "roi": {
-    "uv": null,
-    "thermal": null,
-    "visible": null
-  },
-  "visible_src": "primary"
+  }
 }

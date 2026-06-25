@@ -142,7 +142,7 @@ echo "[4/6] Arrancando stream Canon UV..."
 GPHOTO_PID=""
 if lsusb | grep -qi canon; then
     gphoto2 --stdout --capture-movie 2>/dev/null | \
-        ffmpeg -i - -vcodec rawvideo -pix_fmt yuv420p -threads 0 -f v4l2 /dev/video2 \
+        ffmpeg -i - -vcodec rawvideo -pix_fmt yuyv422 -threads 0 -f v4l2 /dev/video2 \
         -loglevel quiet &
     GPHOTO_PID=$!
     echo "      ✓ Canon streaming (PID $GPHOTO_PID)"
@@ -174,38 +174,24 @@ DEV_THERMAL_PATH=$(find_device_by_name "TOPDON|TC001|topdon")
 DEV_THERMAL=$(echo "$DEV_THERMAL_PATH" | grep -o '[0-9]*$'); DEV_THERMAL=${DEV_THERMAL:-0}
 echo "      Térmica → /dev/video$DEV_THERMAL ($DEV_THERMAL_PATH)"
 
-DEV_VISIBLE_PATH=$(find_device_by_name "Android|Pixel|Android Webcam")
-if [ -z "$DEV_VISIBLE_PATH" ]; then
-    for dev in /dev/video*; do
-        [ -e "$dev" ] || continue
-        idx=$(echo "$dev" | grep -o '[0-9]*$')
-        if [ "$idx" != "$DEV_UV" ] && [ "$idx" != "$DEV_THERMAL" ]; then
-            name=$(get_device_name "$dev")
-            [ -n "$name" ] && { DEV_VISIBLE_PATH="$dev"; break; }
-        fi
-    done
-fi
-DEV_VISIBLE=$(echo "$DEV_VISIBLE_PATH" | grep -o '[0-9]*$'); DEV_VISIBLE=${DEV_VISIBLE:-4}
-echo "      Visible → /dev/video$DEV_VISIBLE ($DEV_VISIBLE_PATH)"
-
-DEV_ALT_PATH=""
+# Visible: primera webcam que no sea UV ni térmica
+DEV_VISIBLE_PATH=""
 for dev in /dev/video*; do
     [ -e "$dev" ] || continue
     idx=$(echo "$dev" | grep -o '[0-9]*$')
-    if [ "$idx" != "$DEV_UV" ] && [ "$idx" != "$DEV_THERMAL" ] && [ "$idx" != "$DEV_VISIBLE" ]; then
+    if [ "$idx" != "$DEV_UV" ] && [ "$idx" != "$DEV_THERMAL" ]; then
         name=$(get_device_name "$dev")
-        [ -n "$name" ] && { DEV_ALT_PATH="$dev"; break; }
+        [ -n "$name" ] && { DEV_VISIBLE_PATH="$dev"; break; }
     fi
 done
-DEV_ALT=$(echo "$DEV_ALT_PATH" | grep -o '[0-9]*$'); DEV_ALT=${DEV_ALT:-6}
-echo "      Alt     → /dev/video$DEV_ALT ($DEV_ALT_PATH)"
+DEV_VISIBLE=$(echo "$DEV_VISIBLE_PATH" | grep -o '[0-9]*$'); DEV_VISIBLE=${DEV_VISIBLE:-4}
+echo "      Visible → /dev/video$DEV_VISIBLE ($DEV_VISIBLE_PATH)"
 
 cat > "$SCRIPT_DIR/camera_config.json" << JSONEOF
 {
-  "uv":          $DEV_UV,
-  "thermal":     $DEV_THERMAL,
-  "visible":     $DEV_VISIBLE,
-  "visible_alt": $DEV_ALT
+  "uv":      $DEV_UV,
+  "thermal": $DEV_THERMAL,
+  "visible": $DEV_VISIBLE
 }
 JSONEOF
 echo "      ✓ camera_config.json generado"
