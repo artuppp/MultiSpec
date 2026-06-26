@@ -111,6 +111,7 @@ echo "      ✓ Todas las dependencias del host listas"
 
 # ── 2. v4l2loopback en el HOST ────────────────────────────────
 echo "[2/6] Cargando v4l2loopback en el host..."
+sudo rmmod v4l2loopback >/dev/null 2>&1 || true
 if ! lsmod | grep -q v4l2loopback; then
     sudo modprobe v4l2loopback devices=1 video_nr=2 card_label="Canon UV" exclusive_caps=1
     echo "      ✓ /dev/video2 creado"

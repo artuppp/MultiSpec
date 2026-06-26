@@ -44,6 +44,7 @@ print('Modelo Real-ESRGAN descargado y listo')" && \
 # ── Aplicación ────────────────────────────────────────────────────────────────
 WORKDIR /app
 COPY server.py .
+COPY thermal_best.pth .
 
 ENV PYTHONUNBUFFERED=1
 
