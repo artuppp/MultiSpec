@@ -227,7 +227,7 @@ for s in streams.values():
 _sr       = None
 _sr_lock  = threading.Lock()
 
-_MODEL_PATH = os.path.join(os.path.dirname(__file__), "thermal_best.pth")
+_MODEL_PATH = os.path.join(os.path.dirname(__file__), "realesr-general-x4v3.pth")
 _MODEL_URL  = "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth"
 
 def _get_sr():
@@ -242,7 +242,7 @@ def _get_sr():
 
             # Descarga el modelo si no está en disco
             if not os.path.exists(_MODEL_PATH):
-                print("[SR] Descargando thermal_best.pth...")
+                print("[SR] Descargando modelo Real-ESRGAN...")
                 import urllib.request
                 urllib.request.urlretrieve(_MODEL_URL, _MODEL_PATH)
                 print("[SR] Modelo descargado")
